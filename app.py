@@ -234,7 +234,7 @@ def main():
                         
                     # 文字装飾ロジック
                     if target_column == "additional1" and decoration_text.strip():
-                        dec_str = f'<font color="{decoration_color}" size="+1"><b>{decoration_text}</b></font>'
+                        dec_str = f'<font color="{decoration_color}"><b>{decoration_text}</b></font>'
                         val = val.replace(decoration_text, dec_str)
                         
                     processed_df.at[idx, target_column] = val
