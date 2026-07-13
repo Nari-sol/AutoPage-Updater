@@ -3,6 +3,7 @@ import pandas as pd
 import re
 import io
 import difflib
+import streamlit.components.v1 as components
 
 def count_fullwidth_chars(text):
     """全角文字数としてカウントする（1000バイト＝500文字相当のチェック）"""
@@ -182,37 +183,40 @@ def main():
     st.write("実際のWebページ上での見え方を事前に確認できます。")
 
     if st.button("プレビューを更新"):
+        # 安全対策：巨大な文字列によるセグフォを回避するため、5000文字に制限
+        safe_orig = original_text[:5000] if original_text else ""
+        safe_repl = replacement_text[:5000] if replacement_text else ""
+        
+        # HTML変換処理を事前に実行し、最小限のデータのみを保存
+        html_before = safe_orig.replace('\n', '<br>')
+        
+        preview_after = safe_repl
+        if target_column == "additional1" and decoration_text.strip():
+            safe_dec = decoration_text[:100]
+            dec_str = f'<font color="{decoration_color}"><b>{safe_dec}</b></font>'
+            preview_after = preview_after.replace(safe_dec, dec_str)
+            
+        html_after = preview_after.replace('\n', '<br>')
+        
         st.session_state['preview_active'] = True
-        st.session_state['prev_orig'] = original_text
-        st.session_state['prev_repl'] = replacement_text
-        st.session_state['prev_col'] = target_column
-        st.session_state['prev_dec_text'] = decoration_text
-        st.session_state['prev_dec_color'] = decoration_color
+        st.session_state['preview_html_before'] = html_before
+        st.session_state['preview_html_after'] = html_after
 
     prev_tab1, prev_tab2 = st.tabs(["変更前（プレビュー）", "変更後（プレビュー）"])
     
     if st.session_state.get('preview_active', False):
-        p_orig = st.session_state.get('prev_orig', '')
-        p_repl = st.session_state.get('prev_repl', '')
-        p_col = st.session_state.get('prev_col', '')
-        p_dec_text = st.session_state.get('prev_dec_text', '')
-        p_dec_color = st.session_state.get('prev_dec_color', '')
+        p_html_before = st.session_state.get('preview_html_before', '')
+        p_html_after = st.session_state.get('preview_html_after', '')
 
         with prev_tab1:
-            if p_orig:
-                html_before = p_orig.replace('\n', '<br>')
-                st.markdown(f"<div>{html_before}</div>", unsafe_allow_html=True)
+            if p_html_before:
+                components.html(f'<div style="font-family: sans-serif; word-wrap: break-word; overflow-wrap: break-word;">{p_html_before}</div>', height=250, scrolling=True)
             else:
                 st.info("※「プレビューを更新」ボタンを押すと、ここにプレビューが表示されます")
         
         with prev_tab2:
-            if p_repl:
-                preview_after = p_repl
-                if p_col == "additional1" and p_dec_text.strip():
-                    dec_str = f'<font color="{p_dec_color}"><b>{p_dec_text}</b></font>'
-                    preview_after = preview_after.replace(p_dec_text, dec_str)
-                html_after = preview_after.replace('\n', '<br>')
-                st.markdown(f"<div>{html_after}</div>", unsafe_allow_html=True)
+            if p_html_after:
+                components.html(f'<div style="font-family: sans-serif; word-wrap: break-word; overflow-wrap: break-word;">{p_html_after}</div>', height=250, scrolling=True)
             else:
                 st.info("※「プレビューを更新」ボタンを押すと、ここにプレビューが表示されます")
     else:
