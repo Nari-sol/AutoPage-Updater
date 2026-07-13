@@ -3,7 +3,6 @@ import pandas as pd
 import re
 import io
 import difflib
-import streamlit.components.v1 as components
 
 def count_fullwidth_chars(text):
     """全角文字数としてカウントする（1000バイト＝500文字相当のチェック）"""
@@ -177,57 +176,6 @@ def main():
         decoration_text = st.text_input("装飾したい文字（任意・additional1のみ有効）", key="input_dec_text")
     with dec_col2:
         decoration_color = st.color_picker("文字色を選択", "#FF0000", key="input_dec_color")
-
-    # --- プレビュー機能 ---
-    st.markdown("### プレビュー")
-    st.write("実際のWebページ上での見え方を事前に確認できます。")
-
-    if st.button("プレビューを更新"):
-        # 安全対策：巨大な文字列によるセグフォを回避するため、5000文字に制限
-        safe_orig = original_text[:5000] if original_text else ""
-        safe_repl = replacement_text[:5000] if replacement_text else ""
-        
-        # HTML変換処理を事前に実行し、最小限のデータのみを保存
-        html_before = safe_orig.replace('\n', '<br>')
-        
-        preview_after = safe_repl
-        if target_column == "additional1" and decoration_text.strip():
-            safe_dec = decoration_text[:100]
-            dec_str = f'<font color="{decoration_color}"><b>{safe_dec}</b></font>'
-            preview_after = preview_after.replace(safe_dec, dec_str)
-            
-        html_after = preview_after.replace('\n', '<br>')
-        
-        st.session_state['preview_active'] = True
-        st.session_state['preview_html_before'] = html_before
-        st.session_state['preview_html_after'] = html_after
-
-    prev_tab1, prev_tab2 = st.tabs(["変更前（プレビュー）", "変更後（プレビュー）"])
-    
-    if st.session_state.get('preview_active', False):
-        p_html_before = st.session_state.get('preview_html_before', '')
-        p_html_after = st.session_state.get('preview_html_after', '')
-
-        preview_style = '<style> body { background-color: #FFFFFF; color: #000000; font-family: sans-serif; } </style>'
-
-        with prev_tab1:
-            if p_html_before:
-                components.html(f'{preview_style}<div style="word-wrap: break-word; overflow-wrap: break-word;">{p_html_before}</div>', height=250, scrolling=True)
-            else:
-                st.info("※「プレビューを更新」ボタンを押すと、ここにプレビューが表示されます")
-        
-        with prev_tab2:
-            if p_html_after:
-                components.html(f'{preview_style}<div style="word-wrap: break-word; overflow-wrap: break-word;">{p_html_after}</div>', height=250, scrolling=True)
-            else:
-                st.info("※「プレビューを更新」ボタンを押すと、ここにプレビューが表示されます")
-    else:
-        with prev_tab1:
-            st.info("※「プレビューを更新」ボタンを押すと、ここにプレビューが表示されます")
-        with prev_tab2:
-            st.info("※「プレビューを更新」ボタンを押すと、ここにプレビューが表示されます")
-            
-    st.markdown("---")
 
     # 4: 実行ボタン
     if st.button("テキスト置換を実行し、ベースデータを更新", type="primary"):
