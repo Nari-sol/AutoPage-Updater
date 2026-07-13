@@ -177,6 +177,29 @@ def main():
     with dec_col2:
         decoration_color = st.color_picker("文字色を選択", "#FF0000")
 
+    # --- プレビュー機能 ---
+    st.markdown("### プレビュー")
+    st.write("実際のWebページ上での見え方を事前に確認できます。")
+    prev_tab1, prev_tab2 = st.tabs(["変更前（プレビュー）", "変更後（プレビュー）"])
+    with prev_tab1:
+        if original_text:
+            html_before = original_text.replace('\n', '<br>')
+            st.markdown(f"<div>{html_before}</div>", unsafe_allow_html=True)
+        else:
+            st.info("置き換え元テキストを入力してください")
+    with prev_tab2:
+        if replacement_text:
+            preview_after = replacement_text
+            if target_column == "additional1" and decoration_text.strip():
+                dec_str = f'<font color="{decoration_color}"><b>{decoration_text}</b></font>'
+                preview_after = preview_after.replace(decoration_text, dec_str)
+            html_after = preview_after.replace('\n', '<br>')
+            st.markdown(f"<div>{html_after}</div>", unsafe_allow_html=True)
+        else:
+            st.info("置き換え後テキストを入力してください")
+            
+    st.markdown("---")
+
     # 4: 実行ボタン
     if st.button("テキスト置換を実行し、ベースデータを更新", type="primary"):
         if not original_text.strip():
