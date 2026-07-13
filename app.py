@@ -166,37 +166,60 @@ def main():
 「置き換え後」の入力欄で作った改行や空白がそのまま実際のページに反映されるため、直感的な位置調整が可能です。""")
     col1, col2 = st.columns(2)
     with col1:
-        original_text = st.text_area("置き換え元テキスト (プレーンテキストを入力)", height=200)
+        original_text = st.text_area("置き換え元テキスト (プレーンテキストを入力)", height=200, key="input_orig")
     with col2:
-        replacement_text = st.text_area("置き換え後テキスト (プレーンテキストを入力)", height=200)
+        replacement_text = st.text_area("置き換え後テキスト (プレーンテキストを入力)", height=200, key="input_repl")
 
     st.write("文字装飾オプション")
     dec_col1, dec_col2 = st.columns(2)
     with dec_col1:
-        decoration_text = st.text_input("装飾したい文字（任意・additional1のみ有効）")
+        decoration_text = st.text_input("装飾したい文字（任意・additional1のみ有効）", key="input_dec_text")
     with dec_col2:
-        decoration_color = st.color_picker("文字色を選択", "#FF0000")
+        decoration_color = st.color_picker("文字色を選択", "#FF0000", key="input_dec_color")
 
     # --- プレビュー機能 ---
     st.markdown("### プレビュー")
     st.write("実際のWebページ上での見え方を事前に確認できます。")
+
+    if st.button("プレビューを更新"):
+        st.session_state['preview_active'] = True
+        st.session_state['prev_orig'] = original_text
+        st.session_state['prev_repl'] = replacement_text
+        st.session_state['prev_col'] = target_column
+        st.session_state['prev_dec_text'] = decoration_text
+        st.session_state['prev_dec_color'] = decoration_color
+
     prev_tab1, prev_tab2 = st.tabs(["変更前（プレビュー）", "変更後（プレビュー）"])
-    with prev_tab1:
-        if original_text:
-            html_before = original_text.replace('\n', '<br>')
-            st.markdown(f"<div>{html_before}</div>", unsafe_allow_html=True)
-        else:
-            st.info("※テキスト置換処理の入力欄にテキストを入力すると、ここにプレビューが表示されます")
-    with prev_tab2:
-        if replacement_text:
-            preview_after = replacement_text
-            if target_column == "additional1" and decoration_text.strip():
-                dec_str = f'<font color="{decoration_color}"><b>{decoration_text}</b></font>'
-                preview_after = preview_after.replace(decoration_text, dec_str)
-            html_after = preview_after.replace('\n', '<br>')
-            st.markdown(f"<div>{html_after}</div>", unsafe_allow_html=True)
-        else:
-            st.info("※テキスト置換処理の入力欄にテキストを入力すると、ここにプレビューが表示されます")
+    
+    if st.session_state.get('preview_active', False):
+        p_orig = st.session_state.get('prev_orig', '')
+        p_repl = st.session_state.get('prev_repl', '')
+        p_col = st.session_state.get('prev_col', '')
+        p_dec_text = st.session_state.get('prev_dec_text', '')
+        p_dec_color = st.session_state.get('prev_dec_color', '')
+
+        with prev_tab1:
+            if p_orig:
+                html_before = p_orig.replace('\n', '<br>')
+                st.markdown(f"<div>{html_before}</div>", unsafe_allow_html=True)
+            else:
+                st.info("※「プレビューを更新」ボタンを押すと、ここにプレビューが表示されます")
+        
+        with prev_tab2:
+            if p_repl:
+                preview_after = p_repl
+                if p_col == "additional1" and p_dec_text.strip():
+                    dec_str = f'<font color="{p_dec_color}"><b>{p_dec_text}</b></font>'
+                    preview_after = preview_after.replace(p_dec_text, dec_str)
+                html_after = preview_after.replace('\n', '<br>')
+                st.markdown(f"<div>{html_after}</div>", unsafe_allow_html=True)
+            else:
+                st.info("※「プレビューを更新」ボタンを押すと、ここにプレビューが表示されます")
+    else:
+        with prev_tab1:
+            st.info("※「プレビューを更新」ボタンを押すと、ここにプレビューが表示されます")
+        with prev_tab2:
+            st.info("※「プレビューを更新」ボタンを押すと、ここにプレビューが表示されます")
             
     st.markdown("---")
 
