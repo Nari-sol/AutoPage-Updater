@@ -186,7 +186,7 @@ def main():
             html_before = original_text.replace('\n', '<br>')
             st.markdown(f"<div>{html_before}</div>", unsafe_allow_html=True)
         else:
-            st.info("置き換え元テキストを入力してください")
+            st.info("※テキスト置換処理の入力欄にテキストを入力すると、ここにプレビューが表示されます")
     with prev_tab2:
         if replacement_text:
             preview_after = replacement_text
@@ -196,7 +196,7 @@ def main():
             html_after = preview_after.replace('\n', '<br>')
             st.markdown(f"<div>{html_after}</div>", unsafe_allow_html=True)
         else:
-            st.info("置き換え後テキストを入力してください")
+            st.info("※テキスト置換処理の入力欄にテキストを入力すると、ここにプレビューが表示されます")
             
     st.markdown("---")
 
