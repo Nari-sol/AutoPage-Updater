@@ -166,16 +166,16 @@ def main():
 「置き換え後」の入力欄で作った改行や空白がそのまま実際のページに反映されるため、直感的な位置調整が可能です。""")
     col1, col2 = st.columns(2)
     with col1:
-        original_text = st.text_area("置き換え元テキスト (プレーンテキストを入力)", height=200, key="input_orig")
+        original_text = st.text_area("置き換え元テキスト (プレーンテキストを入力)", height=200)
     with col2:
-        replacement_text = st.text_area("置き換え後テキスト (プレーンテキストを入力)", height=200, key="input_repl")
+        replacement_text = st.text_area("置き換え後テキスト (プレーンテキストを入力)", height=200)
 
     st.write("文字装飾オプション")
     dec_col1, dec_col2 = st.columns(2)
     with dec_col1:
-        decoration_text = st.text_input("装飾したい文字（任意・additional1のみ有効）", key="input_dec_text")
+        decoration_text = st.text_input("装飾したい文字（任意・additional1のみ有効）")
     with dec_col2:
-        decoration_color = st.color_picker("文字色を選択", "#FF0000", key="input_dec_color")
+        decoration_color = st.color_picker("文字色を選択", "#FF0000")
 
     # 4: 実行ボタン
     if st.button("テキスト置換を実行し、ベースデータを更新", type="primary"):
@@ -234,7 +234,7 @@ def main():
                         
                     # 文字装飾ロジック
                     if target_column == "additional1" and decoration_text.strip():
-                        dec_str = f'<font color="{decoration_color}"><b>{decoration_text}</b></font>'
+                        dec_str = f'<font color="{decoration_color}" size="+1"><b>{decoration_text}</b></font>'
                         val = val.replace(decoration_text, dec_str)
                         
                     processed_df.at[idx, target_column] = val
