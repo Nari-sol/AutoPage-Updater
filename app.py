@@ -208,15 +208,17 @@ def main():
         p_html_before = st.session_state.get('preview_html_before', '')
         p_html_after = st.session_state.get('preview_html_after', '')
 
+        preview_style = '<style> body { background-color: #FFFFFF; color: #000000; font-family: sans-serif; } </style>'
+
         with prev_tab1:
             if p_html_before:
-                components.html(f'<div style="font-family: sans-serif; word-wrap: break-word; overflow-wrap: break-word;">{p_html_before}</div>', height=250, scrolling=True)
+                components.html(f'{preview_style}<div style="word-wrap: break-word; overflow-wrap: break-word;">{p_html_before}</div>', height=250, scrolling=True)
             else:
                 st.info("※「プレビューを更新」ボタンを押すと、ここにプレビューが表示されます")
         
         with prev_tab2:
             if p_html_after:
-                components.html(f'<div style="font-family: sans-serif; word-wrap: break-word; overflow-wrap: break-word;">{p_html_after}</div>', height=250, scrolling=True)
+                components.html(f'{preview_style}<div style="word-wrap: break-word; overflow-wrap: break-word;">{p_html_after}</div>', height=250, scrolling=True)
             else:
                 st.info("※「プレビューを更新」ボタンを押すと、ここにプレビューが表示されます")
     else:
