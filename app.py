@@ -97,10 +97,11 @@ def to_csv_bytes(df):
 def filter_download_columns(df, processed_cols):
     """ダウンロード用に必須列(code, name)と処理済み列のみを抽出する"""
     cols_to_keep = []
-    if 'code' in df.columns:
-        cols_to_keep.append('code')
-    if 'name' in df.columns:
-        cols_to_keep.append('name')
+    # 必須列のバリエーションに対応
+    required_cols = ['code', 'name', '商品コード', '商品名']
+    for req in required_cols:
+        if req in df.columns and req not in cols_to_keep:
+            cols_to_keep.append(req)
         
     for col in processed_cols:
         if col in df.columns and col not in cols_to_keep:
@@ -251,8 +252,12 @@ def main():
             
             if 'processed_columns' not in st.session_state:
                 st.session_state['processed_columns'] = []
-            if target_column not in st.session_state['processed_columns']:
-                st.session_state['processed_columns'].append(target_column)
+            
+            # Streamlitの仕様対策として、リストを再代入して確実に追加を反映させる
+            current_processed = list(st.session_state['processed_columns'])
+            if target_column not in current_processed:
+                current_processed.append(target_column)
+            st.session_state['processed_columns'] = current_processed
 
             st.success("テキスト置換が完了し、ベースデータが更新されました！")
 
@@ -261,82 +266,85 @@ def main():
         for w in st.session_state['warnings']:
             st.write(f"- {w}")
 
-    st.markdown("---")
-    st.header("店舗別ダウンロード")
-    st.write("最新のベースデータをもとに、各店舗(YS1〜YS5)向けのファイルを動的生成してダウンロードします。")
-
-    # ダウンロードセクション
-    col_ys1, col_ys2, col_ys3, col_ys4, col_ys5 = st.columns(5)
+    # ダウンロードボタン描画位置の固定（重複描画バグの回避）
+    dl_container = st.empty()
+    with dl_container.container():
+        st.markdown("---")
+        st.header("店舗別ダウンロード")
+        st.write("最新のベースデータをもとに、各店舗(YS1〜YS5)向けのファイルを動的生成してダウンロードします。")
     
-    current_df = st.session_state['current_df']
-    orig_name = st.session_state.get('original_filename', 'data.csv')
-    base_name = orig_name.rsplit('.', 1)[0]
-    processed_cols = st.session_state.get('processed_columns', [])
-
-    with col_ys1:
-        st.subheader("YS1")
-        st.write("ベースデータそのまま")
-        df_ys1 = generate_ys_data(current_df, 'YS1')
-        df_ys1_dl = filter_download_columns(df_ys1, processed_cols)
-        st.download_button(
-            label="📥 YS1 ダウンロード",
-            data=to_csv_bytes(df_ys1_dl),
-            file_name=f"{base_name}_YS1.csv",
-            mime="text/csv",
-            key="btn_ys1"
-        )
+        # ダウンロードセクション
+        col_ys1, col_ys2, col_ys3, col_ys4, col_ys5 = st.columns(5)
         
-    with col_ys2:
-        st.subheader("YS2")
-        st.write("URL・画像置換、code付与")
-        df_ys2 = generate_ys_data(current_df, 'YS2')
-        df_ys2_dl = filter_download_columns(df_ys2, processed_cols)
-        st.download_button(
-            label="📥 YS2 ダウンロード",
-            data=to_csv_bytes(df_ys2_dl),
-            file_name=f"{base_name}_YS2.csv",
-            mime="text/csv",
-            key="btn_ys2"
-        )
-        
-    with col_ys3:
-        st.subheader("YS3")
-        st.write("YS2と同等 + URL(YS3)")
-        df_ys3 = generate_ys_data(current_df, 'YS3')
-        df_ys3_dl = filter_download_columns(df_ys3, processed_cols)
-        st.download_button(
-            label="📥 YS3 ダウンロード",
-            data=to_csv_bytes(df_ys3_dl),
-            file_name=f"{base_name}_YS3.csv",
-            mime="text/csv",
-            key="btn_ys3"
-        )
-        
-    with col_ys4:
-        st.subheader("YS4")
-        st.write("YS2と同等 + 特別URL置換")
-        df_ys4 = generate_ys_data(current_df, 'YS4')
-        df_ys4_dl = filter_download_columns(df_ys4, processed_cols)
-        st.download_button(
-            label="📥 YS4 ダウンロード",
-            data=to_csv_bytes(df_ys4_dl),
-            file_name=f"{base_name}_YS4.csv",
-            mime="text/csv",
-            key="btn_ys4"
-        )
-        
-    with col_ys5:
-        st.subheader("YS5")
-        st.write("全体URL置換(solltd5)")
-        df_ys5 = generate_ys_data(current_df, 'YS5')
-        df_ys5_dl = filter_download_columns(df_ys5, processed_cols)
-        st.download_button(
-            label="📥 YS5 ダウンロード",
-            data=to_csv_bytes(df_ys5_dl),
-            file_name=f"{base_name}_YS5.csv",
-            mime="text/csv",
-            key="btn_ys5"
-        )
+        current_df = st.session_state['current_df']
+        orig_name = st.session_state.get('original_filename', 'data.csv')
+        base_name = orig_name.rsplit('.', 1)[0]
+        processed_cols = st.session_state.get('processed_columns', [])
+    
+        with col_ys1:
+            st.subheader("YS1")
+            st.write("ベースデータそのまま")
+            df_ys1 = generate_ys_data(current_df, 'YS1')
+            df_ys1_dl = filter_download_columns(df_ys1, processed_cols)
+            st.download_button(
+                label="📥 YS1 ダウンロード",
+                data=to_csv_bytes(df_ys1_dl),
+                file_name=f"{base_name}_YS1.csv",
+                mime="text/csv",
+                key="btn_ys1"
+            )
+            
+        with col_ys2:
+            st.subheader("YS2")
+            st.write("URL・画像置換、code付与")
+            df_ys2 = generate_ys_data(current_df, 'YS2')
+            df_ys2_dl = filter_download_columns(df_ys2, processed_cols)
+            st.download_button(
+                label="📥 YS2 ダウンロード",
+                data=to_csv_bytes(df_ys2_dl),
+                file_name=f"{base_name}_YS2.csv",
+                mime="text/csv",
+                key="btn_ys2"
+            )
+            
+        with col_ys3:
+            st.subheader("YS3")
+            st.write("YS2と同等 + URL(YS3)")
+            df_ys3 = generate_ys_data(current_df, 'YS3')
+            df_ys3_dl = filter_download_columns(df_ys3, processed_cols)
+            st.download_button(
+                label="📥 YS3 ダウンロード",
+                data=to_csv_bytes(df_ys3_dl),
+                file_name=f"{base_name}_YS3.csv",
+                mime="text/csv",
+                key="btn_ys3"
+            )
+            
+        with col_ys4:
+            st.subheader("YS4")
+            st.write("YS2と同等 + 特別URL置換")
+            df_ys4 = generate_ys_data(current_df, 'YS4')
+            df_ys4_dl = filter_download_columns(df_ys4, processed_cols)
+            st.download_button(
+                label="📥 YS4 ダウンロード",
+                data=to_csv_bytes(df_ys4_dl),
+                file_name=f"{base_name}_YS4.csv",
+                mime="text/csv",
+                key="btn_ys4"
+            )
+            
+        with col_ys5:
+            st.subheader("YS5")
+            st.write("全体URL置換(solltd5)")
+            df_ys5 = generate_ys_data(current_df, 'YS5')
+            df_ys5_dl = filter_download_columns(df_ys5, processed_cols)
+            st.download_button(
+                label="📥 YS5 ダウンロード",
+                data=to_csv_bytes(df_ys5_dl),
+                file_name=f"{base_name}_YS5.csv",
+                mime="text/csv",
+                key="btn_ys5"
+            )
 
 if __name__ == "__main__":
     main()
