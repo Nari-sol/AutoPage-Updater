@@ -3,6 +3,7 @@ import pandas as pd
 import re
 import io
 import difflib
+import gc
 
 def count_fullwidth_chars(text):
     """全角文字数としてカウントする（1000バイト＝500文字相当のチェック）"""
@@ -19,13 +20,14 @@ def count_fullwidth_chars(text):
 
 def generate_ys_data(df, store_id):
     """店舗別のデータを生成する"""
+    if store_id == 'YS1':
+        # YS1は置換なしなのでコピーしない（省メモリ対応）
+        return df
+
     df_out = df.copy()
     
     # 対象列の取得: item-image-urls は置換の対象外
     replace_cols = [col for col in df_out.columns if col != 'item-image-urls']
-    
-    if store_id == 'YS1':
-        return df_out
         
     if store_id == 'YS5':
         for col in replace_cols:
@@ -123,19 +125,24 @@ def main():
                 try:
                     if uploaded_file.name.endswith('.csv'):
                         try:
-                            df = pd.read_csv(uploaded_file, encoding='cp932', dtype=str)
+                            temp_df = pd.read_csv(uploaded_file, encoding='cp932', dtype=str)
                         except UnicodeDecodeError:
                             uploaded_file.seek(0)
-                            df = pd.read_csv(uploaded_file, encoding='utf-8', dtype=str)
+                            temp_df = pd.read_csv(uploaded_file, encoding='utf-8', dtype=str)
                     else:
-                        df = pd.read_excel(uploaded_file, dtype=str)
+                        temp_df = pd.read_excel(uploaded_file, dtype=str)
                     
-                    st.session_state['current_df'] = df
+                    st.session_state['current_df'] = temp_df
                     st.session_state['uploaded_file_id'] = uploaded_file.file_id
                     st.session_state['original_filename'] = uploaded_file.name
                     st.session_state['processed_columns'] = []
                     if 'warnings' in st.session_state:
                         del st.session_state['warnings']
+                    
+                    # メモリ解放
+                    del temp_df
+                    gc.collect()
+                    
                     st.success("ファイルを読み込み、ベースデータを保持しました。")
                 except Exception as e:
                     st.error(f"ファイルの読み込みに失敗しました: {e}")
@@ -261,6 +268,10 @@ def main():
 
             st.success("テキスト置換が完了し、ベースデータが更新されました！")
 
+            # 不要な変数の削除とガベージコレクション
+            del processed_df
+            gc.collect()
+
     if st.session_state.get('warnings'):
         st.warning("最新の処理で一部のデータに警告やスキップが発生しています。詳細は以下をご確認ください。")
         for w in st.session_state['warnings']:
@@ -286,65 +297,91 @@ def main():
             st.write("ベースデータそのまま")
             df_ys1 = generate_ys_data(current_df, 'YS1')
             df_ys1_dl = filter_download_columns(df_ys1, processed_cols)
+            csv_ys1 = to_csv_bytes(df_ys1_dl)
+            # 省メモリ化: 巨大なDataFrameを即座に破棄
+            del df_ys1, df_ys1_dl
+            gc.collect()
+
             st.download_button(
                 label="📥 YS1 ダウンロード",
-                data=to_csv_bytes(df_ys1_dl),
+                data=csv_ys1,
                 file_name=f"{base_name}_YS1.csv",
                 mime="text/csv",
                 key="btn_ys1"
             )
+            del csv_ys1
             
         with col_ys2:
             st.subheader("YS2")
             st.write("URL・画像置換、code付与")
             df_ys2 = generate_ys_data(current_df, 'YS2')
             df_ys2_dl = filter_download_columns(df_ys2, processed_cols)
+            csv_ys2 = to_csv_bytes(df_ys2_dl)
+            del df_ys2, df_ys2_dl
+            gc.collect()
+
             st.download_button(
                 label="📥 YS2 ダウンロード",
-                data=to_csv_bytes(df_ys2_dl),
+                data=csv_ys2,
                 file_name=f"{base_name}_YS2.csv",
                 mime="text/csv",
                 key="btn_ys2"
             )
+            del csv_ys2
             
         with col_ys3:
             st.subheader("YS3")
             st.write("YS2と同等 + URL(YS3)")
             df_ys3 = generate_ys_data(current_df, 'YS3')
             df_ys3_dl = filter_download_columns(df_ys3, processed_cols)
+            csv_ys3 = to_csv_bytes(df_ys3_dl)
+            del df_ys3, df_ys3_dl
+            gc.collect()
+
             st.download_button(
                 label="📥 YS3 ダウンロード",
-                data=to_csv_bytes(df_ys3_dl),
+                data=csv_ys3,
                 file_name=f"{base_name}_YS3.csv",
                 mime="text/csv",
                 key="btn_ys3"
             )
+            del csv_ys3
             
         with col_ys4:
             st.subheader("YS4")
             st.write("YS2と同等 + 特別URL置換")
             df_ys4 = generate_ys_data(current_df, 'YS4')
             df_ys4_dl = filter_download_columns(df_ys4, processed_cols)
+            csv_ys4 = to_csv_bytes(df_ys4_dl)
+            del df_ys4, df_ys4_dl
+            gc.collect()
+
             st.download_button(
                 label="📥 YS4 ダウンロード",
-                data=to_csv_bytes(df_ys4_dl),
+                data=csv_ys4,
                 file_name=f"{base_name}_YS4.csv",
                 mime="text/csv",
                 key="btn_ys4"
             )
+            del csv_ys4
             
         with col_ys5:
             st.subheader("YS5")
             st.write("全体URL置換(solltd5)")
             df_ys5 = generate_ys_data(current_df, 'YS5')
             df_ys5_dl = filter_download_columns(df_ys5, processed_cols)
+            csv_ys5 = to_csv_bytes(df_ys5_dl)
+            del df_ys5, df_ys5_dl
+            gc.collect()
+
             st.download_button(
                 label="📥 YS5 ダウンロード",
-                data=to_csv_bytes(df_ys5_dl),
+                data=csv_ys5,
                 file_name=f"{base_name}_YS5.csv",
                 mime="text/csv",
                 key="btn_ys5"
             )
+            del csv_ys5
 
 if __name__ == "__main__":
     main()
