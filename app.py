@@ -111,6 +111,17 @@ def filter_download_columns(df, processed_cols):
             
     return df[cols_to_keep]
 
+@st.cache_data(show_spinner="CSVデータ生成中...")
+def get_cached_csv_bytes(df, store_id, processed_cols_tuple):
+    """キャッシュを利用してダウンロード用CSVデータを生成する"""
+    df_store = generate_ys_data(df, store_id)
+    df_dl = filter_download_columns(df_store, list(processed_cols_tuple))
+    csv_bytes = to_csv_bytes(df_dl)
+    # キャッシュ生成時のみ安全な領域でメモリを解放
+    del df_store, df_dl
+    gc.collect()
+    return csv_bytes
+
 def main():
     st.set_page_config(page_title="AutoPage Updater", layout="wide")
     st.title("AutoPage Updater")
@@ -290,18 +301,13 @@ def main():
         current_df = st.session_state['current_df']
         orig_name = st.session_state.get('original_filename', 'data.csv')
         base_name = orig_name.rsplit('.', 1)[0]
-        processed_cols = st.session_state.get('processed_columns', [])
+        # キャッシュのハッシュ計算のためにtuple化する
+        processed_cols = tuple(st.session_state.get('processed_columns', []))
     
         with col_ys1:
             st.subheader("YS1")
             st.write("ベースデータそのまま")
-            df_ys1 = generate_ys_data(current_df, 'YS1')
-            df_ys1_dl = filter_download_columns(df_ys1, processed_cols)
-            csv_ys1 = to_csv_bytes(df_ys1_dl)
-            # 省メモリ化: 巨大なDataFrameを即座に破棄
-            del df_ys1, df_ys1_dl
-            gc.collect()
-
+            csv_ys1 = get_cached_csv_bytes(current_df, 'YS1', processed_cols)
             st.download_button(
                 label="📥 YS1 ダウンロード",
                 data=csv_ys1,
@@ -309,17 +315,11 @@ def main():
                 mime="text/csv",
                 key="btn_ys1"
             )
-            del csv_ys1
             
         with col_ys2:
             st.subheader("YS2")
             st.write("URL・画像置換、code付与")
-            df_ys2 = generate_ys_data(current_df, 'YS2')
-            df_ys2_dl = filter_download_columns(df_ys2, processed_cols)
-            csv_ys2 = to_csv_bytes(df_ys2_dl)
-            del df_ys2, df_ys2_dl
-            gc.collect()
-
+            csv_ys2 = get_cached_csv_bytes(current_df, 'YS2', processed_cols)
             st.download_button(
                 label="📥 YS2 ダウンロード",
                 data=csv_ys2,
@@ -327,17 +327,11 @@ def main():
                 mime="text/csv",
                 key="btn_ys2"
             )
-            del csv_ys2
             
         with col_ys3:
             st.subheader("YS3")
             st.write("YS2と同等 + URL(YS3)")
-            df_ys3 = generate_ys_data(current_df, 'YS3')
-            df_ys3_dl = filter_download_columns(df_ys3, processed_cols)
-            csv_ys3 = to_csv_bytes(df_ys3_dl)
-            del df_ys3, df_ys3_dl
-            gc.collect()
-
+            csv_ys3 = get_cached_csv_bytes(current_df, 'YS3', processed_cols)
             st.download_button(
                 label="📥 YS3 ダウンロード",
                 data=csv_ys3,
@@ -345,17 +339,11 @@ def main():
                 mime="text/csv",
                 key="btn_ys3"
             )
-            del csv_ys3
             
         with col_ys4:
             st.subheader("YS4")
             st.write("YS2と同等 + 特別URL置換")
-            df_ys4 = generate_ys_data(current_df, 'YS4')
-            df_ys4_dl = filter_download_columns(df_ys4, processed_cols)
-            csv_ys4 = to_csv_bytes(df_ys4_dl)
-            del df_ys4, df_ys4_dl
-            gc.collect()
-
+            csv_ys4 = get_cached_csv_bytes(current_df, 'YS4', processed_cols)
             st.download_button(
                 label="📥 YS4 ダウンロード",
                 data=csv_ys4,
@@ -363,17 +351,11 @@ def main():
                 mime="text/csv",
                 key="btn_ys4"
             )
-            del csv_ys4
             
         with col_ys5:
             st.subheader("YS5")
             st.write("全体URL置換(solltd5)")
-            df_ys5 = generate_ys_data(current_df, 'YS5')
-            df_ys5_dl = filter_download_columns(df_ys5, processed_cols)
-            csv_ys5 = to_csv_bytes(df_ys5_dl)
-            del df_ys5, df_ys5_dl
-            gc.collect()
-
+            csv_ys5 = get_cached_csv_bytes(current_df, 'YS5', processed_cols)
             st.download_button(
                 label="📥 YS5 ダウンロード",
                 data=csv_ys5,
@@ -381,7 +363,6 @@ def main():
                 mime="text/csv",
                 key="btn_ys5"
             )
-            del csv_ys5
 
 if __name__ == "__main__":
     main()
