@@ -288,9 +288,9 @@ def main():
         for w in st.session_state['warnings']:
             st.write(f"- {w}")
 
-    # ダウンロードボタン描画位置の固定（重複描画バグの回避）
-    dl_container = st.empty()
-    with dl_container.container():
+    # ダウンロードセクションの表示制御（1回以上置換処理が実行された場合のみ表示）
+    # Streamlitの順次描画を活かし、st.empty()を使用せず通常の条件分岐で制御することで重複描画バグを防止
+    if st.session_state.get('processed_columns'):
         st.markdown("---")
         st.header("店舗別ダウンロード")
         st.write("最新のベースデータをもとに、各店舗(YS1〜YS5)向けのファイルを動的生成してダウンロードします。")
