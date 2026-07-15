@@ -202,69 +202,99 @@ def main():
             st.error("置き換え元テキストを入力してください。")
         else:
             warnings_list = []
-            processed_df = df.copy()
 
             with st.spinner("置換処理中..."):
-                for idx, row in processed_df.iterrows():
-                    val = str(row[target_column]) if pd.notna(row[target_column]) else ""
+                # --- [改善点1＆3] 差分解析と正規表現のコンパイルをループの「外」で1回だけ実行 ---
+                actions = []
+                try:
+                    orig_lines = original_text.splitlines()
+                    repl_lines = replacement_text.splitlines()
+                    matcher = difflib.SequenceMatcher(None, orig_lines, repl_lines)
                     
-                    try:
-                        orig_lines = original_text.splitlines()
-                        repl_lines = replacement_text.splitlines()
-                        matcher = difflib.SequenceMatcher(None, orig_lines, repl_lines)
+                    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+                        if tag == 'equal':
+                            continue
                         
-                        for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-                            if tag == 'equal':
-                                continue
-                            
-                            orig_chunk = "\n".join(orig_lines[i1:i2])
-                            repl_chunk = "\n".join(repl_lines[j1:j2])
-                            
-                            if tag in ('replace', 'delete'):
-                                if orig_chunk.strip():
-                                    chars = [re.escape(c) for c in orig_chunk if not c.isspace()]
+                        orig_chunk = "\n".join(orig_lines[i1:i2])
+                        repl_chunk = "\n".join(repl_lines[j1:j2])
+                        
+                        if tag in ('replace', 'delete'):
+                            if orig_chunk.strip():
+                                chars = [re.escape(c) for c in orig_chunk if not c.isspace()]
+                                if chars:
+                                    pattern_str = r"(?:<[^>]+>|\s)*".join(chars)
+                                    pattern = re.compile(pattern_str, re.IGNORECASE)
+                                    repl = repl_chunk.replace("\n", "<br>") if repl_chunk else ""
+                                    actions.append(('replace', pattern, repl))
+                                    
+                        elif tag == 'insert':
+                            if repl_chunk.strip():
+                                if i1 > 0:
+                                    prev_line = orig_lines[i1 - 1]
+                                    chars = [re.escape(c) for c in prev_line if not c.isspace()]
                                     if chars:
                                         pattern_str = r"(?:<[^>]+>|\s)*".join(chars)
                                         pattern = re.compile(pattern_str, re.IGNORECASE)
-                                        repl = repl_chunk.replace("\n", "<br>") if repl_chunk else ""
-                                        val = pattern.sub(lambda m: repl, val, count=1)
-                                        
-                            elif tag == 'insert':
-                                if repl_chunk.strip():
-                                    if i1 > 0:
-                                        prev_line = orig_lines[i1 - 1]
-                                        chars = [re.escape(c) for c in prev_line if not c.isspace()]
-                                        if chars:
-                                            pattern_str = r"(?:<[^>]+>|\s)*".join(chars)
-                                            pattern = re.compile(pattern_str, re.IGNORECASE)
-                                            repl = repl_chunk.replace("\n", "<br>")
-                                            val = pattern.sub(lambda m: m.group(0) + "<br>" + repl, val, count=1)
-                                    elif i2 < len(orig_lines):
-                                        next_line = orig_lines[i2]
-                                        chars = [re.escape(c) for c in next_line if not c.isspace()]
-                                        if chars:
-                                            pattern_str = r"(?:<[^>]+>|\s)*".join(chars)
-                                            pattern = re.compile(pattern_str, re.IGNORECASE)
-                                            repl = repl_chunk.replace("\n", "<br>")
-                                            val = pattern.sub(lambda m: repl + "<br>" + m.group(0), val, count=1)
+                                        repl = repl_chunk.replace("\n", "<br>")
+                                        actions.append(('insert_after', pattern, repl))
+                                elif i2 < len(orig_lines):
+                                    next_line = orig_lines[i2]
+                                    chars = [re.escape(c) for c in next_line if not c.isspace()]
+                                    if chars:
+                                        pattern_str = r"(?:<[^>]+>|\s)*".join(chars)
+                                        pattern = re.compile(pattern_str, re.IGNORECASE)
+                                        repl = repl_chunk.replace("\n", "<br>")
+                                        actions.append(('insert_before', pattern, repl))
+                except Exception as e:
+                    st.error(f"置換パターンの解析中にエラーが発生しました: {e}")
+                    st.stop()
+
+                # --- ループ処理の軽量化（iterrowsを排除し、リストで一括処理） ---
+                processed_df = df.copy()
+                
+                code_col = 'code' if 'code' in processed_df.columns else '商品コード' if '商品コード' in processed_df.columns else None
+                codes = processed_df[code_col].tolist() if code_col else [f"行番号 {i+1}" for i in range(len(processed_df))]
+                target_values = processed_df[target_column].tolist()
+                
+                new_values = []
+                dec_text = decoration_text.strip()
+                dec_str = f'<font color="{decoration_color}"><b>{dec_text}</b></font>' if dec_text else ""
+                check_explanation = (target_column == "explanation")
+
+                for i, val in enumerate(target_values):
+                    val_str = str(val) if pd.notna(val) else ""
+                    if not val_str:
+                        new_values.append(val_str)
+                        continue
+                        
+                    try:
+                        # コンパイル済みの正規表現を一括適用
+                        for action_type, pattern, repl in actions:
+                            if action_type == 'replace':
+                                val_str = pattern.sub(lambda m, r=repl: r, val_str, count=1)
+                            elif action_type == 'insert_after':
+                                val_str = pattern.sub(lambda m, r=repl: m.group(0) + "<br>" + r, val_str, count=1)
+                            elif action_type == 'insert_before':
+                                val_str = pattern.sub(lambda m, r=repl: r + "<br>" + m.group(0), val_str, count=1)
                     except Exception as e:
-                        item_id = row.get("code", row.get("商品コード", f"行番号 {idx+1}"))
-                        warnings_list.append(f"スキップ: {item_id} の置換処理でエラーが発生しました。詳細: {e}")
+                        warnings_list.append(f"スキップ: {codes[i]} の置換処理でエラーが発生しました。詳細: {e}")
                         
                     # 文字装飾ロジック
-                    if target_column == "additional1" and decoration_text.strip():
-                        dec_str = f'<font color="{decoration_color}"><b>{decoration_text}</b></font>'
-                        val = val.replace(decoration_text, dec_str)
+                    if target_column == "additional1" and dec_text:
+                        val_str = val_str.replace(dec_text, dec_str)
                         
-                    processed_df.at[idx, target_column] = val
-
                     # explanation 文字数チェック
-                    if target_column == "explanation":
-                        char_count = count_fullwidth_chars(val)
+                    if check_explanation:
+                        char_count = count_fullwidth_chars(val_str)
                         if char_count > 500:
-                            item_id = row.get("code", row.get("商品コード", f"行番号 {idx+1}"))
-                            warnings_list.append(f"警告: {item_id} の「explanation」が全角500文字(1000バイト)を超過しています。(推定 {char_count} 文字)")
+                            warnings_list.append(f"警告: {codes[i]} の「explanation」が全角500文字(1000バイト)を超過しています。(推定 {char_count} 文字)")
 
+                    new_values.append(val_str)
+                
+                # DataFrameに一括代入
+                processed_df[target_column] = new_values
+
+            # セッションステートへの保存（ループが完全に終了してから実行）
             st.session_state['current_df'] = processed_df
             st.session_state['warnings'] = warnings_list
             
@@ -279,8 +309,11 @@ def main():
 
             st.success("テキスト置換が完了し、ベースデータが更新されました！")
 
-            # 不要な変数の削除とガベージコレクション
+            # --- [改善点2] セッション保存等すべて完了した最終段階で1回だけ実行 ---
             del processed_df
+            del target_values
+            del new_values
+            del codes
             gc.collect()
 
     if st.session_state.get('warnings'):
