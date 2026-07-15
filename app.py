@@ -147,6 +147,7 @@ def main():
                     st.session_state['uploaded_file_id'] = uploaded_file.file_id
                     st.session_state['original_filename'] = uploaded_file.name
                     st.session_state['processed_columns'] = []
+                    st.session_state['csv_generated'] = False
                     if 'warnings' in st.session_state:
                         del st.session_state['warnings']
                     
@@ -201,6 +202,7 @@ def main():
         if not original_text.strip():
             st.error("置き換え元テキストを入力してください。")
         else:
+            st.session_state['csv_generated'] = False
             warnings_list = []
 
             with st.spinner("置換処理中..."):
@@ -321,81 +323,88 @@ def main():
         for w in st.session_state['warnings']:
             st.write(f"- {w}")
 
-    # ダウンロードセクションの表示制御（1回以上置換処理が実行された場合のみ表示）
-    # Streamlitの順次描画を活かし、st.empty()を使用せず通常の条件分岐で制御することで重複描画バグを防止
+    # CSV生成とダウンロードセクションの表示制御
     if st.session_state.get('processed_columns'):
         st.markdown("---")
-        st.header("店舗別ダウンロード")
-        st.write("最新のベースデータをもとに、各店舗(YS1〜YS5)向けのファイルを動的生成してダウンロードします。")
-    
-        # ダウンロードセクション
-        col_ys1, col_ys2, col_ys3, col_ys4, col_ys5 = st.columns(5)
+        st.header("ダウンロード用データの一括生成")
+        st.write("すべてのテキスト置換処理が完了したら、以下のボタンを押して各店舗(YS1〜YS5)向けのダウンロード用CSVデータを生成してください。")
         
-        current_df = st.session_state['current_df']
-        orig_name = st.session_state.get('original_filename', 'data.csv')
-        base_name = orig_name.rsplit('.', 1)[0]
-        # キャッシュのハッシュ計算のためにtuple化する
-        processed_cols = tuple(st.session_state.get('processed_columns', []))
-    
-        with col_ys1:
-            st.subheader("YS1")
-            st.write("ベースデータそのまま")
-            csv_ys1 = get_cached_csv_bytes(current_df, 'YS1', processed_cols)
-            st.download_button(
-                label="📥 YS1 ダウンロード",
-                data=csv_ys1,
-                file_name=f"{base_name}_YS1.csv",
-                mime="text/csv",
-                key="btn_ys1"
-            )
+        if st.button("すべての置換処理を完了し、ダウンロード用データを生成する", type="primary", key="btn_generate_csv"):
+            st.session_state['csv_generated'] = True
             
-        with col_ys2:
-            st.subheader("YS2")
-            st.write("URL・画像置換、code付与")
-            csv_ys2 = get_cached_csv_bytes(current_df, 'YS2', processed_cols)
-            st.download_button(
-                label="📥 YS2 ダウンロード",
-                data=csv_ys2,
-                file_name=f"{base_name}_YS2.csv",
-                mime="text/csv",
-                key="btn_ys2"
-            )
+        if st.session_state.get('csv_generated', False):
+            st.markdown("---")
+            st.header("店舗別ダウンロード")
+            st.write("生成が完了しました。各店舗向けのファイルをダウンロードしてください。")
+        
+            # ダウンロードセクション
+            col_ys1, col_ys2, col_ys3, col_ys4, col_ys5 = st.columns(5)
             
-        with col_ys3:
-            st.subheader("YS3")
-            st.write("YS2と同等 + URL(YS3)")
-            csv_ys3 = get_cached_csv_bytes(current_df, 'YS3', processed_cols)
-            st.download_button(
-                label="📥 YS3 ダウンロード",
-                data=csv_ys3,
-                file_name=f"{base_name}_YS3.csv",
-                mime="text/csv",
-                key="btn_ys3"
-            )
-            
-        with col_ys4:
-            st.subheader("YS4")
-            st.write("YS2と同等 + 特別URL置換")
-            csv_ys4 = get_cached_csv_bytes(current_df, 'YS4', processed_cols)
-            st.download_button(
-                label="📥 YS4 ダウンロード",
-                data=csv_ys4,
-                file_name=f"{base_name}_YS4.csv",
-                mime="text/csv",
-                key="btn_ys4"
-            )
-            
-        with col_ys5:
-            st.subheader("YS5")
-            st.write("全体URL置換(solltd5)")
-            csv_ys5 = get_cached_csv_bytes(current_df, 'YS5', processed_cols)
-            st.download_button(
-                label="📥 YS5 ダウンロード",
-                data=csv_ys5,
-                file_name=f"{base_name}_YS5.csv",
-                mime="text/csv",
-                key="btn_ys5"
-            )
+            current_df = st.session_state['current_df']
+            orig_name = st.session_state.get('original_filename', 'data.csv')
+            base_name = orig_name.rsplit('.', 1)[0]
+            # キャッシュのハッシュ計算のためにtuple化する
+            processed_cols = tuple(st.session_state.get('processed_columns', []))
+        
+            with col_ys1:
+                st.subheader("YS1")
+                st.write("ベースデータそのまま")
+                csv_ys1 = get_cached_csv_bytes(current_df, 'YS1', processed_cols)
+                st.download_button(
+                    label="📥 YS1 ダウンロード",
+                    data=csv_ys1,
+                    file_name=f"{base_name}_YS1.csv",
+                    mime="text/csv",
+                    key="btn_ys1"
+                )
+                
+            with col_ys2:
+                st.subheader("YS2")
+                st.write("URL・画像置換、code付与")
+                csv_ys2 = get_cached_csv_bytes(current_df, 'YS2', processed_cols)
+                st.download_button(
+                    label="📥 YS2 ダウンロード",
+                    data=csv_ys2,
+                    file_name=f"{base_name}_YS2.csv",
+                    mime="text/csv",
+                    key="btn_ys2"
+                )
+                
+            with col_ys3:
+                st.subheader("YS3")
+                st.write("YS2と同等 + URL(YS3)")
+                csv_ys3 = get_cached_csv_bytes(current_df, 'YS3', processed_cols)
+                st.download_button(
+                    label="📥 YS3 ダウンロード",
+                    data=csv_ys3,
+                    file_name=f"{base_name}_YS3.csv",
+                    mime="text/csv",
+                    key="btn_ys3"
+                )
+                
+            with col_ys4:
+                st.subheader("YS4")
+                st.write("YS2と同等 + 特別URL置換")
+                csv_ys4 = get_cached_csv_bytes(current_df, 'YS4', processed_cols)
+                st.download_button(
+                    label="📥 YS4 ダウンロード",
+                    data=csv_ys4,
+                    file_name=f"{base_name}_YS4.csv",
+                    mime="text/csv",
+                    key="btn_ys4"
+                )
+                
+            with col_ys5:
+                st.subheader("YS5")
+                st.write("全体URL置換(solltd5)")
+                csv_ys5 = get_cached_csv_bytes(current_df, 'YS5', processed_cols)
+                st.download_button(
+                    label="📥 YS5 ダウンロード",
+                    data=csv_ys5,
+                    file_name=f"{base_name}_YS5.csv",
+                    mime="text/csv",
+                    key="btn_ys5"
+                )
 
 if __name__ == "__main__":
     main()
